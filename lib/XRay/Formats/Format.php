@@ -61,6 +61,13 @@ abstract class Format implements iFormat {
       'li',
       'ol',
       'span',
+      'table',
+      'thead',
+      'tbody',
+      'tfoot',
+      'tr',
+      'th',
+      'td',
     ];
     if($allowImg)
       $allowed[] = 'img';
