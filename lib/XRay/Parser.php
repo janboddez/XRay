@@ -133,7 +133,7 @@ class Parser {
     if(is_string($body)) {
       // Some feeds don't start with <?xml
       $begin = trim(substr($body, 0, 40));
-      if(substr($begin, 0, 4) == '<rss') {
+      if(substr($begin, 0, 4) == '<rss' || substr($begin, 0, 5) == '<feed') {
         return Formats\XML::parse($http_response);
       }
     }
