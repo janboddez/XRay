@@ -2,7 +2,7 @@
 namespace p3k\XRay\Formats;
 
 use DOMDocument, DOMXPath;
-use HTMLPurifier, HTMLPurifier_Config;
+use HTMLPurifier, HTMLPurifier_Config, HTMLPurifier_TagTransform_Simple;
 
 interface iFormat {
 
@@ -61,6 +61,9 @@ abstract class Format implements iFormat {
       'li',
       'ol',
       'span',
+      // Allow `sub`, `sup`, tables, `figure`, and more.
+      'sub',
+      'sup',
       'table',
       'thead',
       'tbody',
@@ -68,6 +71,12 @@ abstract class Format implements iFormat {
       'tr',
       'th',
       'td',
+      'caption',
+      'figure',
+      'figcaption',
+      'div',
+      'header',
+      'footer',
     ];
     if($allowImg)
       $allowed[] = 'img';
@@ -91,6 +100,11 @@ abstract class Format implements iFormat {
       $config->set('URI.Base', $baseURL);
     }
 
+    // Hoping this would prevent, e.g., nested paragraph tags.
+    $config->set('HTML.TidyLevel', 'heavy');
+    // Disallow inline styles.
+    $config->set('CSS.AllowedProperties', []);
+
     $def = $config->getHTMLDefinition(true);
 
     // add HTML <time> element
@@ -103,6 +117,19 @@ abstract class Format implements iFormat {
         'datetime' => 'Text'
       ]
     );
+
+    // Add `figure` and `figcaption`.
+    $def->addElement('figcaption', 'Block', 'Flow', 'Common');
+    $def->addElement('figure', 'Block', 'Optional: (figcaption, Flow) | (Flow, figcaption) | Flow', 'Common');
+
+    // Add `header` and `footer`, and replace them (and `div`) with `p`, hoping
+    // HTMLPurifier will fix incorrectly nested paragraphs.
+    $def->addElement('header',  'Block', 'Flow', 'Common');
+    $def->addElement('footer',  'Block', 'Flow', 'Common');
+
+    $def->info_tag_transform['header'] = new HTMLPurifier_TagTransform_Simple('p');
+    $def->info_tag_transform['footer'] = new HTMLPurifier_TagTransform_Simple('p');
+    $def->info_tag_transform['div'] = new HTMLPurifier_TagTransform_Simple('p');
 
     /*
     // This isn't working right now, not sure why
@@ -151,7 +178,7 @@ abstract class Format implements iFormat {
     $sanitized = $purifier->purify($html);
     $sanitized = str_replace("&#xD;","\r",$sanitized);
     $sanitized = html_entity_decode($sanitized);
-    return trim(str_replace(['<br>','<br />'],"\n", $sanitized));
+    return trim(str_replace(['<br>','<br/>','<br />'],"\n", $sanitized));
   }
 
 }

@@ -89,6 +89,11 @@ class Mf2 extends Format {
     foreach($mf2['items'] as $item) {
       if(array_key_exists('url', $item['properties'])) {
         $urls = $item['properties']['url'];
+
+        if(isset($urls[0]) && !is_string($urls[0])) {
+          continue;
+        }
+
         $urls = array_map('\p3k\XRay\normalize_url', $urls);
         if(in_array($url, $urls)) {
           #Parse::debug("mf2:1: Recognized $url as a permalink because an object on the page matched the URL of the request");
