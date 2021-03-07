@@ -67,8 +67,8 @@ class XML extends Format {
 
     if($item->getContent())
       $entry['content'] = [
-        'html' => self::sanitizeHTML($item->getContent()),
-        'text' => self::stripHTML($item->getContent())
+        'html' => self::sanitizeHTML(str_replace(['<th></th>', '<td></td>'], ['<th>&nbsp;</th>', '<td>&nbsp;</td>'], $item->getContent())), // Try to prevent empty table cells from being stripped.
+        'text' => self::stripHTML($item->getContent()),
       ];
 
     if($item->getTitle() && $item->getTitle() != $item->getUrl()) {

@@ -36,7 +36,8 @@ abstract class Format implements iFormat {
 
   protected static function sanitizeHTML($html, $allowImg=true, $baseURL=false) {
     $allowed = [
-      'a',
+      '*[class]',
+      'a[href]',
       'abbr',
       'b',
       'br',
@@ -60,7 +61,7 @@ abstract class Format implements iFormat {
       'ul',
       'li',
       'ol',
-      'span',
+      // 'span',
       // Allow `sub`, `sup`, tables, `figure`, and more.
       'sub',
       'sup',
@@ -69,8 +70,8 @@ abstract class Format implements iFormat {
       'tbody',
       'tfoot',
       'tr',
-      'th',
-      'td',
+      'th[colspan|rowspan]',
+      'td[colspan|rowspan]',
       'caption',
       'figure',
       'figcaption',
@@ -79,7 +80,7 @@ abstract class Format implements iFormat {
       'footer',
     ];
     if($allowImg)
-      $allowed[] = 'img';
+      $allowed[] = 'img[src|alt]';
 
     $config = HTMLPurifier_Config::createDefault();
     $config->set('Cache.DefinitionImpl', null);
@@ -93,7 +94,9 @@ abstract class Format implements iFormat {
       $config->set('AutoFormat.RemoveEmpty.Predicate', array('iframe' => array(0 => 'src')));
     }
 
-    $config->set('HTML.AllowedElements', $allowed);
+    // $config->set('HTML.AllowedElements', $allowed);
+    $config->set('HTML.Allowed', implode(',', $allowed));
+    // $config->set('AutoFormat.RemoveEmpty', false); // Do not remove empty (e.g., `td`) elements.
 
     if($baseURL) {
       $config->set('URI.MakeAbsolute', true);
@@ -101,7 +104,7 @@ abstract class Format implements iFormat {
     }
 
     // Hoping this would prevent, e.g., nested paragraph tags.
-    $config->set('HTML.TidyLevel', 'heavy');
+    // $config->set('HTML.TidyLevel', 'heavy');
     // Disallow inline styles.
     $config->set('CSS.AllowedProperties', []);
 
@@ -166,6 +169,7 @@ abstract class Format implements iFormat {
     $purifier = new HTMLPurifier($config);
     $sanitized = $purifier->purify($html);
     $sanitized = str_replace("&#xD;","\r",$sanitized);
+
     return trim($sanitized);
   }
 
