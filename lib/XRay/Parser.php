@@ -120,11 +120,11 @@ class Parser {
     }
 
     // Check if an ActivityStreams JSON object was passed in
-    if(Formats\ActivityStreams::is_as2_json($body)) {
-      $data = Formats\ActivityStreams::parse($http_response, $this->http, $opts);
-      $data['source-format'] = 'activity+json';
-      return $data;
-    }
+    // if(Formats\ActivityStreams::is_as2_json($body)) {
+    //   $data = Formats\ActivityStreams::parse($http_response, $this->http, $opts);
+    //   $data['source-format'] = 'activity+json';
+    //   return $data;
+    // }
 
     if(is_string($body) && substr($body, 0, 5) == '<?xml') {
       return Formats\XML::parse($http_response);
