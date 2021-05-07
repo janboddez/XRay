@@ -41,6 +41,7 @@ abstract class Format implements iFormat {
       'abbr',
       'b',
       'br',
+      'cite',
       'code',
       'del',
       'em',
