@@ -120,22 +120,14 @@ class Parser {
     }
 
     // Check if an ActivityStreams JSON object was passed in
-    // if(Formats\ActivityStreams::is_as2_json($body)) {
-    //   $data = Formats\ActivityStreams::parse($http_response, $this->http, $opts);
-    //   $data['source-format'] = 'activity+json';
-    //   return $data;
-    // }
-
-    if(is_string($body) && substr($body, 0, 5) == '<?xml') {
-      return Formats\XML::parse($http_response);
+    if(Formats\ActivityStreams::is_as2_json($body)) {
+      $data = Formats\ActivityStreams::parse($http_response, $this->http, $opts);
+      $data['source-format'] = 'activity+json';
+      return $data;
     }
 
-    if(is_string($body)) {
-      // Some feeds don't start with <?xml
-      $begin = trim(substr($body, 0, 40));
-      if(substr($begin, 0, 4) == '<rss' || substr($begin, 0, 5) == '<feed') {
-        return Formats\XML::parse($http_response);
-      }
+    if(is_string($body) && (substr($body, 0, 5) == '<?xml' || substr($body, 0, 4) == '<rss' || substr($body, 0, 5) == '<feed')) {
+      return Formats\XML::parse($http_response);
     }
 
     if(is_string($body) && substr($body, 0, 1) == '{') {

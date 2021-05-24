@@ -2,7 +2,7 @@
 namespace p3k\XRay\Formats;
 
 use DOMDocument, DOMXPath;
-use HTMLPurifier, HTMLPurifier_Config, HTMLPurifier_TagTransform_Simple;
+use HTMLPurifier, HTMLPurifier_HTML5Config, HTMLPurifier_TagTransform_Simple;
 
 interface iFormat {
 
@@ -47,9 +47,9 @@ abstract class Format implements iFormat {
       'em',
       'i',
       'q',
-      'strike',
+      // 'strike',
       'strong',
-      'time',
+      'time[datetime]',
       'blockquote',
       'pre',
       'p',
@@ -76,15 +76,22 @@ abstract class Format implements iFormat {
       'caption',
       'figure',
       'figcaption',
+      'mark',
       'div',
       'header',
       'footer',
+      'source[src|type]',
+      'audio',
+      'video',
+      'picture',
     ];
+
     if($allowImg)
       $allowed[] = 'img[src|alt]';
 
-    $config = HTMLPurifier_Config::createDefault();
-    $config->set('Cache.DefinitionImpl', null);
+	$initial = HTMLPurifier_HTML5Config::createDefault();
+	$config = HTMLPurifier_HTML5Config::create($initial);
+	$config->set('Cache.DefinitionImpl', null);
 
     if (\p3k\XRay\allow_iframe_video()) {
       $allowed[] = 'iframe';
@@ -95,7 +102,6 @@ abstract class Format implements iFormat {
       $config->set('AutoFormat.RemoveEmpty.Predicate', array('iframe' => array(0 => 'src')));
     }
 
-    // $config->set('HTML.AllowedElements', $allowed);
     $config->set('HTML.Allowed', implode(',', $allowed));
     // $config->set('AutoFormat.RemoveEmpty', false); // Do not remove empty (e.g., `td`) elements.
 
@@ -104,32 +110,19 @@ abstract class Format implements iFormat {
       $config->set('URI.Base', $baseURL);
     }
 
-    // Hoping this would prevent, e.g., nested paragraph tags.
-    // $config->set('HTML.TidyLevel', 'heavy');
-    // Disallow inline styles.
-    $config->set('CSS.AllowedProperties', []);
+    // Hoping this prevents, e.g., nested paragraph tags.
+    $config->set('HTML.TidyLevel', 'heavy');
 
-    $def = $config->getHTMLDefinition(true);
+    // Disallow all inline styles.
+    $config->set('CSS.AllowedProperties', []);
+    $def = $config->maybeGetRawHTMLDefinition();
 
     // add HTML <time> element
-    $def->addElement(
-      'time',
-      'Inline',
-      'Inline',
-      'Common',
-      [
-        'datetime' => 'Text'
-      ]
-    );
+    $def->addElement('time', 'Inline', 'Inline', 'Common', ['datetime' => 'Text']);
 
     // Add `figure` and `figcaption`.
-    $def->addElement('figcaption', 'Block', 'Flow', 'Common');
-    $def->addElement('figure', 'Block', 'Optional: (figcaption, Flow) | (Flow, figcaption) | Flow', 'Common');
-
-    // Add `header` and `footer`, and replace them (and `div`) with `p`, hoping
-    // HTMLPurifier will fix incorrectly nested paragraphs.
-    $def->addElement('header',  'Block', 'Flow', 'Common');
-    $def->addElement('footer',  'Block', 'Flow', 'Common');
+    // $def->addElement('figcaption', 'Block', 'Flow', 'Common');
+    // $def->addElement('figure', 'Block', 'Optional: (figcaption, Flow) | (Flow, figcaption) | Flow', 'Common');
 
     $def->info_tag_transform['header'] = new HTMLPurifier_TagTransform_Simple('p');
     $def->info_tag_transform['footer'] = new HTMLPurifier_TagTransform_Simple('p');
@@ -176,7 +169,7 @@ abstract class Format implements iFormat {
 
   // Return a plaintext version of the input HTML
   protected static function stripHTML($html) {
-    $config = HTMLPurifier_Config::createDefault();
+    $config = HTMLPurifier_HTML5Config::createDefault();
     $config->set('Cache.DefinitionImpl', null);
     $config->set('HTML.AllowedElements', ['br']);
     $purifier = new HTMLPurifier($config);

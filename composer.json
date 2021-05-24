@@ -14,7 +14,8 @@
     "cebe/markdown": "1.1.*",
     "p3k/picofeed": "@dev",
     "facebook/graph-sdk": "^5.5",
-    "masterminds/html5": "^2.3"
+    "masterminds/html5": "^2.3",
+    "xemlock/htmlpurifier-html5": "^0.1.11"
   },
   "autoload": {
     "psr-4": {
