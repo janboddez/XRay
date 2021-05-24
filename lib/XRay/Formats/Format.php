@@ -81,8 +81,8 @@ abstract class Format implements iFormat {
       'header',
       'footer',
       'source[src|type]',
-      'audio',
-      'video',
+      'audio[controls]',
+      'video[controls]',
       'picture',
     ];
 
