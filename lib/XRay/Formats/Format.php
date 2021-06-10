@@ -2,7 +2,8 @@
 namespace p3k\XRay\Formats;
 
 use DOMDocument, DOMXPath;
-use HTMLPurifier, HTMLPurifier_Config;
+use HTMLPurifier, HTMLPurifier_TagTransform_Simple;
+use HTMLPurifier_HTML5Config;
 
 interface iFormat {
 
@@ -36,18 +37,20 @@ abstract class Format implements iFormat {
 
   protected static function sanitizeHTML($html, $allowImg=true, $baseURL=false) {
     $allowed = [
-      'a',
+      '*[class]',
+      'a[href]',
       'abbr',
       'b',
       'br',
+      'cite',
       'code',
       'del',
       'em',
       'i',
       'q',
-      'strike',
+      // 'strike',
       'strong',
-      'time',
+      'time[datetime]',
       'blockquote',
       'pre',
       'p',
@@ -60,91 +63,91 @@ abstract class Format implements iFormat {
       'ul',
       'li',
       'ol',
-      'span',
+      // 'span',
+      // Allow `sub`, `sup`, tables, `figure`, and more.
+      'sub',
+      'sup',
+      'table',
+      'thead',
+      'tbody',
+      'tfoot',
+      'tr',
+      'th[colspan|rowspan]',
+      'td[colspan|rowspan]',
+      'caption',
+      'figure',
+      'figcaption',
+      'mark',
+      'div',
+      'header',
+      'footer',
+      'source[src|type]',
+      'audio[controls]',
+      'video[controls]',
     ];
-    if($allowImg)
-      $allowed[] = 'img';
 
-    $config = HTMLPurifier_Config::createDefault();
-    $config->set('Cache.DefinitionImpl', null);
+    if($allowImg) {
+      $allowed[] = 'picture';
+      $allowed[] = 'img[src|alt]';
+      $allowed[] = 'video[src|controls|type]';
+      $allowed[] = 'source[src|type]';
+    }
+
+	$initial = HTMLPurifier_HTML5Config::createDefault();
+	$config = HTMLPurifier_HTML5Config::create($initial);
+	$config->set('Cache.DefinitionImpl', null);
 
     if (\p3k\XRay\allow_iframe_video()) {
       $allowed[] = 'iframe';
       $config->set('HTML.SafeIframe', true);
-      $config->set('URI.SafeIframeRegexp', '%^(https?:)?//(www\.youtube(?:-nocookie)?\.com/embed/|player\.vimeo\.com/video/)%');
+      $config->set('URI.SafeIframeRegexp', '%^(https?:)?//(www\.youtube(?:-nocookie)?\.com/embed/|player\.vimeo\.com/video/|codepen\.io/(?:.+)/embed/)%');
       $config->set('AutoFormat.RemoveEmpty', true);
       // Removes iframe in case it has no src. This strips the non-allowed domains.
       $config->set('AutoFormat.RemoveEmpty.Predicate', array('iframe' => array(0 => 'src')));
     }
 
-    $config->set('HTML.AllowedElements', $allowed);
+    $config->set('HTML.Allowed', implode(',', $allowed));
+    $config->set('AutoFormat.RemoveEmpty', true);
 
     if($baseURL) {
       $config->set('URI.MakeAbsolute', true);
       $config->set('URI.Base', $baseURL);
     }
 
-    $def = $config->getHTMLDefinition(true);
+    // Hoping this prevents, e.g., nested paragraph tags.
+    $config->set('HTML.TidyLevel', 'heavy');
+
+    // Disallow all inline styles.
+    $config->set('CSS.AllowedProperties', []);
+
+    $def = $config->maybeGetRawHTMLDefinition();
 
     // add HTML <time> element
-    $def->addElement(
-      'time',
-      'Inline',
-      'Inline',
-      'Common',
-      [
-        'datetime' => 'Text'
-      ]
-    );
+    $def->addElement('time', 'Inline', 'Inline', 'Common', ['datetime' => 'Text']);
 
-    /*
-    // This isn't working right now, not sure why
-    // http://developers.whatwg.org/the-video-element.html#the-video-element
-    $def->addElement(
-      'video',
-      'Block',
-      'Optional: (source, Flow) | (Flow, source) | Flow',
-      'Common',
-      [
-        'src' => 'URI',
-        'type' => 'Text',
-        'width' => 'Length',
-        'height' => 'Length',
-        'poster' => 'URI',
-        'preload' => 'Enum#auto,metadata,none',
-        'controls' => 'Bool',
-      ]
-    );
-    $def->addElement(
-      'source',
-      'Block',
-      'Flow',
-      'Common',
-      [
-        'src' => 'URI',
-        'type' => 'Text',
-      ]
-    );
-    */
+    $def->info_tag_transform['header'] = new HTMLPurifier_TagTransform_Simple('p');
+    $def->info_tag_transform['footer'] = new HTMLPurifier_TagTransform_Simple('p');
+    $def->info_tag_transform['div'] = new HTMLPurifier_TagTransform_Simple('p');
 
     // Override the allowed classes to only support Microformats2 classes
     $def->manager->attrTypes->set('Class', new HTMLPurifier_AttrDef_HTML_Microformats2());
     $purifier = new HTMLPurifier($config);
     $sanitized = $purifier->purify($html);
     $sanitized = str_replace("&#xD;","\r",$sanitized);
+
     return trim($sanitized);
   }
 
   // Return a plaintext version of the input HTML
   protected static function stripHTML($html) {
-    $config = HTMLPurifier_Config::createDefault();
+    $config = HTMLPurifier_HTML5Config::createDefault();
     $config->set('Cache.DefinitionImpl', null);
     $config->set('HTML.AllowedElements', ['br']);
     $purifier = new HTMLPurifier($config);
     $sanitized = $purifier->purify($html);
     $sanitized = str_replace("&#xD;","\r",$sanitized);
     $sanitized = html_entity_decode($sanitized);
-    return trim(str_replace(['<br>','<br />'],"\n", $sanitized));
+    return trim(str_replace(['<br>','<br/>','<br />'],"\n", $sanitized));
   }
 
 }
