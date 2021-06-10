@@ -2,8 +2,9 @@
 namespace p3k\XRay\Formats;
 
 use DOMDocument, DOMXPath;
-use HTMLPurifier, HTMLPurifier_TagTransform_Simple;
+use HTMLPurifier;
 use HTMLPurifier_HTML5Config;
+use HTMLPurifier_TagTransform_Simple;
 
 interface iFormat {
 
@@ -42,13 +43,12 @@ abstract class Format implements iFormat {
       'abbr',
       'b',
       'br',
-      'cite',
       'code',
       'del',
       'em',
       'i',
       'q',
-      // 'strike',
+      //'strike',
       'strong',
       'time[datetime]',
       'blockquote',
@@ -63,7 +63,7 @@ abstract class Format implements iFormat {
       'ul',
       'li',
       'ol',
-      // 'span',
+      //'span',
       // Allow `sub`, `sup`, tables, `figure`, and more.
       'sub',
       'sup',
@@ -77,29 +77,27 @@ abstract class Format implements iFormat {
       'caption',
       'figure',
       'figcaption',
-      'mark',
+      'audio[src|controls]',
       'div',
       'header',
       'footer',
-      'source[src|type]',
-      'audio[controls]',
-      'video[controls]',
     ];
 
     if($allowImg) {
       $allowed[] = 'picture';
       $allowed[] = 'img[src|alt]';
-      $allowed[] = 'video[src|controls|type]';
+      $allowed[] = 'video[src|controls]';
       $allowed[] = 'source[src|type]';
     }
 
-	$initial = HTMLPurifier_HTML5Config::createDefault();
-	$config = HTMLPurifier_HTML5Config::create($initial);
-	$config->set('Cache.DefinitionImpl', null);
+    $initial = HTMLPurifier_HTML5Config::createDefault();
+    $config = HTMLPurifier_HTML5Config::create($initial);
+    $config->set('Cache.DefinitionImpl', null);
 
     if (\p3k\XRay\allow_iframe_video()) {
-      $allowed[] = 'iframe';
+      $allowed[] = 'iframe[src]';
       $config->set('HTML.SafeIframe', true);
+      // Added CodePen embeds (`iframe` only).
       $config->set('URI.SafeIframeRegexp', '%^(https?:)?//(www\.youtube(?:-nocookie)?\.com/embed/|player\.vimeo\.com/video/|codepen\.io/(?:.+)/embed/)%');
       $config->set('AutoFormat.RemoveEmpty', true);
       // Removes iframe in case it has no src. This strips the non-allowed domains.
@@ -107,7 +105,6 @@ abstract class Format implements iFormat {
     }
 
     $config->set('HTML.Allowed', implode(',', $allowed));
-    $config->set('AutoFormat.RemoveEmpty', true);
 
     if($baseURL) {
       $config->set('URI.MakeAbsolute', true);
@@ -117,37 +114,36 @@ abstract class Format implements iFormat {
     // Hoping this prevents, e.g., nested paragraph tags.
     $config->set('HTML.TidyLevel', 'heavy');
 
-    // Disallow all inline styles.
-    $config->set('CSS.AllowedProperties', []);
-
     $def = $config->maybeGetRawHTMLDefinition();
 
-    // add HTML <time> element
+    // Add HTML `time` element.
     $def->addElement('time', 'Inline', 'Inline', 'Common', ['datetime' => 'Text']);
 
+    // Transform `header`, `footer`, `div` to paragraphs (i.e., a block-level
+    // element that's relatively easy to style).
     $def->info_tag_transform['header'] = new HTMLPurifier_TagTransform_Simple('p');
     $def->info_tag_transform['footer'] = new HTMLPurifier_TagTransform_Simple('p');
-    $def->info_tag_transform['div'] = new HTMLPurifier_TagTransform_Simple('p');
+    $def->info_tag_transform['div']    = new HTMLPurifier_TagTransform_Simple('p');
 
     // Override the allowed classes to only support Microformats2 classes
     $def->manager->attrTypes->set('Class', new HTMLPurifier_AttrDef_HTML_Microformats2());
     $purifier = new HTMLPurifier($config);
     $sanitized = $purifier->purify($html);
     $sanitized = str_replace("&#xD;","\r",$sanitized);
-
     return trim($sanitized);
   }
 
   // Return a plaintext version of the input HTML
   protected static function stripHTML($html) {
-    $config = HTMLPurifier_HTML5Config::createDefault();
+    $initial = HTMLPurifier_HTML5Config::createDefault();
+    $config = HTMLPurifier_HTML5Config::create($initial);
     $config->set('Cache.DefinitionImpl', null);
     $config->set('HTML.AllowedElements', ['br']);
     $purifier = new HTMLPurifier($config);
     $sanitized = $purifier->purify($html);
     $sanitized = str_replace("&#xD;","\r",$sanitized);
     $sanitized = html_entity_decode($sanitized);
-    return trim(str_replace(['<br>','<br/>','<br />'],"\n", $sanitized));
+    return trim(str_replace(['<br>','<br />'],"\n", $sanitized));
   }
 
 }

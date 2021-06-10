@@ -39,7 +39,8 @@ class XML extends Format {
       }
 
     } catch(\Throwable $t) {
-
+        // At least provide some output.
+        \Log::error($t->getMessage());
     }
 
     return $result;
