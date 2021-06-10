@@ -4,8 +4,7 @@ namespace p3k\XRay\Formats;
 use HTMLPurifier, HTMLPurifier_Config;
 use DOMDocument, DOMXPath;
 use p3k\XRay\Formats;
-use PicoFeed\Reader\Reader;
-use PicoFeed\PicoFeedException;
+use SimplePie;
 
 class XML extends Format {
 
@@ -26,18 +25,20 @@ class XML extends Format {
     ];
 
     try {
-      $reader = new Reader();
-      $parser = $reader->getParser($url, $xml, '');
-      $feed = $parser->execute();
+      $feed = new SimplePie();
+      $feed->set_stupidly_fast(true); // Bypasses sanitization, which we'll tackle in a second. Will probably also skip resolving relative URLs, which we'll have to fix separately. But we'd have to do that anyway for our Fetch Original Content entries.
+      $feed->set_raw_data($xml);
+      $feed->init();
+      $feed->handle_content_type();
 
       $result['data']['type'] = 'feed';
       $result['data']['items'] = [];
 
-      foreach($feed->getItems() as $item) {
+      foreach($feed->get_items() as $item) {
         $result['data']['items'][] = self::_hEntryFromFeedItem($item, $feed);
       }
 
-    } catch(PicoFeedException $e) {
+    } catch(\Throwable $t) {
 
     }
 
@@ -54,25 +55,20 @@ class XML extends Format {
       ]
     ];
 
-    if(is_array($guid=$item->getTag('guid')) && count($guid))
-      $entry['uid'] = $guid[0];
-    elseif(is_array($guid=$item->getTag('id')) && count($guid))
-      $entry['uid'] = $guid[0];
+    $entry['uid'] = $item->get_id();
+    $entry['url'] = $item->get_link() ?: null; // We'll remove empty elements afterward.
 
-    if($item->getUrl())
-      $entry['url'] = $item->getUrl();
+    if($item->get_gmdate('c'))
+      $entry['published'] = $item->get_gmdate('c');
 
-    if($item->getPublishedDate())
-      $entry['published'] = $item->getPublishedDate()->format('c');
-
-    if($item->getContent())
+    if($item->get_content())
       $entry['content'] = [
-        'html' => self::sanitizeHTML($item->getContent()),
-        'text' => self::stripHTML($item->getContent())
+        'html' => self::sanitizeHTML($item->get_content()),
+        'text' => self::stripHTML($item->get_content())
       ];
 
-    if($item->getTitle() && $item->getTitle() != $item->getUrl()) {
-      $title = $item->getTitle();
+    if($item->get_title() && $item->get_title() !== $item->get_link()) {
+      $title = $item->get_title();
       $entry['name'] = $title;
 
       // Check if the title is a prefix of the content and drop if so
@@ -90,19 +86,20 @@ class XML extends Format {
       }
     }
 
-    if($item->getAuthor()) {
-      $entry['author']['name'] = $item->getAuthor();
+    $author = $item->get_author();
+
+    if($author) {
+      $entry['author']['name'] = $author->get_name() ?: null;
+      $entry['author']['url']  = $author->get_link() ?: $feed->get_link();
+
+      $entry['author'] = array_filter($entry['author']);
     }
 
-    if($item->getAuthorUrl()) {
-      $entry['author']['url'] = $item->getAuthorUrl();
-    } else if($feed->siteUrl) {
-      $entry['author']['url'] = $feed->siteUrl;
-    }
+    $enclosure = $item->get_enclosure();
 
-    if($item->getEnclosureType()) {
+    if($enclosure) {
       $prop = false;
-      switch($item->getEnclosureType()) {
+      switch($enclosure->get_type()) {
         case 'audio/mpeg':
           $prop = 'audio'; break;
         case 'image/jpeg':
@@ -111,8 +108,10 @@ class XML extends Format {
           $prop = 'photo'; break;
       }
       if($prop)
-        $entry[$prop] = [$item->getEnclosureUrl()];
+        $entry[$prop] = [$enclosure->get_link()];
     }
+
+    $entry = array_filter($entry);
 
     $entry['post-type'] = \p3k\XRay\PostType::discover($entry);
 
