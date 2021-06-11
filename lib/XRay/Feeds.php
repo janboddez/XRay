@@ -93,7 +93,7 @@ class Feeds {
         foreach($mf2['rel-urls'] as $rel=>$info) {
           if(isset($info['rels']) && in_array('alternate', $info['rels'])) {
             if(isset($info['type'])) {
-              if(strpos($info['type'], 'application/json') !== false) {
+              if(strpos($info['type'], 'application/json') !== false || strpos($info['type'], 'application/feed+json') !== false) {
                 $feeds[] = [
                   'url' => $rel,
                   'type' => 'jsonfeed'
