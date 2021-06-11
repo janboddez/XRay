@@ -26,7 +26,8 @@ class XML extends Format {
 
     try {
       $feed = new SimplePie();
-      $feed->set_stupidly_fast(true); // Bypasses sanitization, which we'll tackle in a second. Will probably also skip resolving relative URLs, which we'll have to fix separately. But we'd have to do that anyway for our Fetch Original Content entries.
+      $feed->set_stupidly_fast(true);  // Bypass sanitization (and a few more things), which we'll tackle in a second
+      $feed->set_url_replacements([]); // Bypass relative URL resolution (handled in `self::_hEntryFromFeedItem()`)
       $feed->set_raw_data($xml);
       $feed->init();
       $feed->handle_content_type();
@@ -62,11 +63,14 @@ class XML extends Format {
     if($item->get_gmdate('c'))
       $entry['published'] = $item->get_gmdate('c');
 
-    if($item->get_content())
+    if($item->get_content()) {
       $entry['content'] = [
-        'html' => self::sanitizeHTML($item->get_content()),
+        'html' => self::sanitizeHTML(
+          \p3k\XRay\resolve_urls($item->get_content(), $entry['url'] ?? '')
+        ),
         'text' => self::stripHTML($item->get_content())
       ];
+    }
 
     if($item->get_title() && $item->get_title() !== $item->get_link()) {
       $title = $item->get_title();

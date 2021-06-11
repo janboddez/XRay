@@ -64,7 +64,7 @@ class Feeds {
         'url' => $result['url'],
         'type' => 'rss'
       ];
-    } elseif(strpos($contentType, 'application/json') !== false && substr($body, 0, 1) == '{') {
+    } elseif((strpos($contentType, 'application/json') !== false || strpos($contentType, 'application/feed+json') !== false) && substr($body, 0, 1) == '{') {
       $feeddata = json_decode($body, true);
       if($feeddata && isset($feeddata['version']) && $feeddata['version'] == 'https://jsonfeed.org/version/1') {
         $feeds[] = [

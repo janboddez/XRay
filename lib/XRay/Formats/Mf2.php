@@ -250,8 +250,8 @@ class Mf2 extends Format {
       $textContent = $content;
     } elseif(!is_string($content) && is_array($content) && array_key_exists('html', $content)) {
       if(array_key_exists('html', $content)) {
-        // Only allow images in the content if there is no photo property set
-        if(isset($item['properties']['photo']))
+        // Only allow images (and video) in the content if there is no photo (or video) property set
+        if(isset($item['properties']['photo']) || isset($item['properties']['video']))
           $allowImg = false;
         else
           $allowImg = true;

@@ -1,6 +1,40 @@
 <?php
 namespace p3k\XRay;
 
+// Attempts to resolve relative links inside a chunk of HTML
+function resolve_urls(string $html, string $baseUrl): string
+{
+  if(empty($baseUrl))
+    return $html;
+
+  $html = mb_convert_encoding($html, 'HTML-ENTITIES', mb_detect_encoding($html));
+
+  libxml_use_internal_errors(true);
+
+  $doc = new \DOMDocument();
+  $doc->loadHTML($html, LIBXML_HTML_NODEFDTD);
+
+  $xpath = new \DOMXPath($doc);
+
+  foreach ($xpath->query('//*[@src or @href or @data]') as $node) {
+    // Currently leaves `srcset` untouched
+
+    if ($node->hasAttribute('href')) {
+      $node->setAttribute('href', \Mf2\resolveUrl($baseUrl, $node->getAttribute('href')));
+    }
+
+    if ($node->hasAttribute('src')) {
+      $node->setAttribute('src', \Mf2\resolveUrl($baseUrl, $node->getAttribute('src')));
+    }
+
+    if ($node->hasAttribute('data')) {
+      $node->setAttribute('data', \Mf2\resolveUrl($baseUrl, $node->getAttribute('data')));
+    }
+  }
+
+  return $doc->saveHTML();
+}
+
 function view($template, $data=[]) {
   global $templates;
   return $templates->render($template, $data);
