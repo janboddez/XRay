@@ -73,7 +73,7 @@ class XML extends Format {
     }
 
     if($item->get_title() && $item->get_title() !== $item->get_link()) {
-      $title = $item->get_title();
+      $title = self::stripHTML($item->get_title());
       $entry['name'] = $title;
 
       // Check if the title is a prefix of the content and drop if so
@@ -97,7 +97,7 @@ class XML extends Format {
       $entry['author']['name'] = $author->get_name() ?: null;
       $entry['author']['url']  = $author->get_link() ?: $feed->get_link();
 
-      $entry['author'] = array_filter($entry['author']);
+      $entry['author'] = array_filter($entry['author']); // Remove empty elements
     }
 
     $enclosure = $item->get_enclosure();
@@ -116,7 +116,7 @@ class XML extends Format {
         $entry[$prop] = [$enclosure->get_link()];
     }
 
-    $entry = array_filter($entry);
+    $entry = array_filter($entry); // Remove empty elements
 
     $entry['post-type'] = \p3k\XRay\PostType::discover($entry);
 
