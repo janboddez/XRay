@@ -36,7 +36,7 @@ abstract class Format implements iFormat {
     return [$doc, $xpath];
   }
 
-  protected static function sanitizeHTML($html, $allowImg=true, $baseURL=false) {
+  public static function sanitizeHTML($html, $allowImg=true, $baseURL=false) {
     $allowed = [
       '*[class]',
       'a[href]',
@@ -134,7 +134,7 @@ abstract class Format implements iFormat {
   }
 
   // Return a plaintext version of the input HTML
-  protected static function stripHTML($html) {
+  public static function stripHTML($html) {
 	$initial = HTMLPurifier_HTML5Config::createDefault();
 	$config = HTMLPurifier_HTML5Config::create($initial);
     $config->set('Cache.DefinitionImpl', null);

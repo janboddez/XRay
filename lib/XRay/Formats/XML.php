@@ -40,8 +40,12 @@ class XML extends Format {
       }
 
     } catch(\Throwable $t) {
-        // At least provide some output.
-        \Log::error($t->getMessage());
+      // At least provide some output.
+      // \Log::error($t->getMessage());
+      return [
+        'error' => 'invalid_xml',
+        'error_description' => trim($t->getMessage() ?: 'The feed could not be parsed'),
+      ];
     }
 
     return $result;
